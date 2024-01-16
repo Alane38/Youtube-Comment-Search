@@ -1,3 +1,9 @@
+/* 
+WRITED BY NEWALFOX 
+& 
+based on the project of MiladSadeghi - https://github.com/MiladSadeghi/Youtube-Comment-Picker
+*/
+
 const searchCommentBtn = document.querySelector("#searchComment");
 const correctLink = document.getElementById("correctLink");
 const correctWord = document.getElementById("correctWord");
@@ -6,7 +12,11 @@ const wrongWord = document.getElementById("wrongWord");
 const toastBody = document.querySelectorAll(".toast-body");
 const CommentCount = document.querySelector("#CommentCount");
 const showResultSection = document.querySelector("#Enter");
-let apiToken = "AIzaSyA5ExhJtGZlt6LMFaXOBBhCoxAy1U-reG8";
+/* replace it to your YOUTUBE API KEY!!
+----------------------------------------------------------- */
+//personnal note: https://console.cloud.google.com/apis/credentials?project=youtube-comment-search-411412
+let apiToken = ""
+/* -------------------------------------------------------- */
 let youtubeClass;
 let tokens = {};
 let nextPageToken;
