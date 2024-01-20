@@ -6,26 +6,25 @@
 
 body {
   font-family: "PT Sans", sans-serif;
+  background-color: #000;
+  color: #fff;
 }
 
 .form-control::placeholder {
-  color: rgb(175, 175, 175);
-  font-family: "PT Sans", sans-serif;
-
+  color: #777;
 }
 
 .form-control:focus {
-  border-color: #9e9e9e;
-    outline: 0;
-    box-shadow: 0 0 0 0.25rem rgba(165, 165, 165, 0.25);
+  border-color: #444; /* Couleur de la bordure lorsqu'il est en focus */
+  box-shadow: 0 0 0 0.25rem rgba(0, 0, 0, 0.25);
 }
 
 .background-link {
   padding: 2rem 2.5rem;
   padding-bottom: 1rem;
-  background: rgba(126, 126, 126, 0.527);
+  background: rgba(0, 0, 0, 0.8);
   border-radius: 1rem;
-  border: 7px solid rgba(163, 163, 163, 0.527);
+  border: 2px solid rgb(110, 110, 110); /* Bordure avec une transparence pour rester sombre */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -37,14 +36,18 @@ body {
 
 .toast-header {
   border-radius: 1rem 1rem 0 0;
-  background: rgba(180, 180, 180, 0.527);;
+  background: rgba(0, 0, 0, 0.8);
 }
 
 .toast-body {
-  background-color: rgb(136, 136, 136);
+  background-color: #333;
   border-radius: 0 0 0.4rem 0.4rem;
 }
 
 .highlighted {
-  background-color: green;
+  background-color: #2b722b;
+}
+
+.border-grey {
+  border-color: rgb(110, 110, 110) !important;
 }
