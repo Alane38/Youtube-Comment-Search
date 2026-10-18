@@ -9,209 +9,165 @@ const correctLink = document.getElementById('correctLink')
 const correctWord = document.getElementById('correctWord')
 const wrongLink = document.getElementById('wrongLink')
 const wrongWord = document.getElementById('wrongWord')
-const toastBody = document.querySelectorAll('.toast-body')
 const CommentCount = document.querySelector('#CommentCount')
 const showResultSection = document.querySelector('#Enter')
 
-/* 
-  Replace it with your YOUTUBE API KEY!!
-  -----------------------------------------------------------
-*/
-// Personal note: https://console.cloud.google.com/apis/credentials?project=youtube-comment-search-411412
-let apiToken = 'AIzaSyBeVlK8kU08EkBVDPVtCtDFOfNkjAkk_vU'
-/* 
-  -----------------------------------------------------------
-*/
-
-let youtubeClass
-let tokens = {}
-let nextPageToken
-let keyLength
+// ⚠️ Mettre ta vraie clé API
+const apiToken = "AIzaSyDYHHLyTY8hkpOOrdBUui-Z-Q8qmNo5MAw"
 
 class Youtube {
   constructor() {
-    this.videoID
-    this.searchWord
+    this.videoID = null
+    this.searchWord = null
   }
 
   getID(link) {
     const regex =
-      /^(?:https?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$/
+      /^(?:https?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))(([\w-]{11}))(?:\S+)?$/
     const result = link.match(regex)
-    this.videoID = result[1]
-    return this.videoID
+    return result ? result[1] : null
   }
 
   checkLink() {
     const link = document.querySelector('#linkInput').value
-    const regex =
-      /^(?:https?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$/
-    const result = link.match(regex)
-    if (result) {
-      let toastCorrect = new bootstrap.Toast(correctLink)
-      toastCorrect.show()
-      this.getID(link)
+    const id = this.getID(link)
+    if (id) {
+      this.videoID = id
+      new bootstrap.Toast(correctLink).show()
       return true
     } else {
-      let toastWrong = new bootstrap.Toast(wrongLink)
-      toastWrong.show()
+      new bootstrap.Toast(wrongLink).show()
       return false
     }
   }
 
   checkWord() {
-    const searchWord = document.querySelector('#searchWord').value
-    if (searchWord !== '') {
-      this.searchWord = searchWord.toLowerCase()
-      let toastCorrect = new bootstrap.Toast(correctWord)
-      toastCorrect.show()
+    const word = document.querySelector('#searchWord').value
+    if (word.trim() !== "") {
+      this.searchWord = word.toLowerCase()
+      new bootstrap.Toast(correctWord).show()
       return true
     } else {
-      let toastWrong = new bootstrap.Toast(wrongWord)
-      toastWrong.show()
+      new bootstrap.Toast(wrongWord).show()
       return false
     }
   }
 
-  async getDataFromAPI(APILINK) {
-    tokens = {}
-    CommentCount.textContent = 0
-    const response = await fetch(APILINK)
-    const data = await response.json()
-    return data
-  }
+  async fetchComments(videoId) {
+    let comments = []
+    let nextPageToken = null
 
-  showResult() {
-    let result = 0
+    do {
+      const url = new URL("https://youtube.googleapis.com/youtube/v3/commentThreads")
+      url.search = new URLSearchParams({
+        part: "snippet,replies",
+        videoId: videoId,
+        key: apiToken,
+        maxResults: 100,
+        pageToken: nextPageToken || ""
+      })
 
-    function highlightWordOnComment(word, comment) {
-      let filteredComment = comment
+      const res = await fetch(url)
+      const data = await res.json()
 
-      const regex = new RegExp(word, 'gi')
-      if (comment.match(regex)) {
-        filteredComment = filteredComment.replace(regex, `<span class="highlighted">$&</span>`)
+      if (data.error) {
+        console.error("API Error:", data.error)
+        break
       }
 
-      return filteredComment
-    }
+      comments.push(...data.items)
+      CommentCount.textContent = parseInt(CommentCount.textContent) + data.items.length
 
-    Object.values(tokens).forEach(itemsList => {
-      itemsList.items.forEach((comment, key) => {
-        const textOriginal = comment.snippet.topLevelComment.snippet.textOriginal
-        const searchWordLowerCase = this.searchWord.toLowerCase()
-        if (textOriginal.toLowerCase().includes(searchWordLowerCase)) {
-          showResultSection.innerHTML += `
-            <hr class="text-white"/>
+      nextPageToken = data.nextPageToken
+    } while (nextPageToken)
+
+    return comments
+  }
+
+  highlightWord(word, text) {
+    const regex = new RegExp(word, "gi")
+    return text.replace(regex, `<span class="highlighted">$&</span>`)
+  }
+
+  showResult(comments) {
+    showResultSection.innerHTML = ""
+    let found = 0
+
+    comments.forEach(comment => {
+      const top = comment.snippet.topLevelComment.snippet
+      const text = top.textOriginal
+
+      if (text.toLowerCase().includes(this.searchWord)) {
+        found++
+        showResultSection.innerHTML += `
+          <hr class="text-white"/>
+          <div class="container">
+            <div class="mb-3">
+              <img class="img-fluid rounded-circle border border-2 border-grey" src="${top.authorProfileImageUrl}">
+            </div>
+            <div class="mb-3">
+              <a class="text-white fs-4" target="_blank" href="${top.authorChannelUrl}">
+                ${top.authorDisplayName} <i class="bi bi-box-arrow-up-right fs-6"></i>
+              </a>
+            </div>
             <div class="container">
-              <div class="mb-3">
-                <img class="img-fluid rounded-circle border border-2 border-grey" src="${
-                  comment.snippet.topLevelComment.snippet.authorProfileImageUrl
-                }">
+              <p class="text-white m-0">${this.highlightWord(this.searchWord, text)}</p>
+              <div class="d-flex gap-2 mt-2">
+                <img src="assets/images/heart.png" alt="like" height="25" width="25"/>
+                <p>${top.likeCount}</p>
               </div>
-              <div class="mb-3">
-                <a class="text-white fs-4" target="_blank" href="${
-                  comment.snippet.topLevelComment.snippet.authorChannelUrl
-                }">
-                  ${comment.snippet.topLevelComment.snippet.authorDisplayName}
-                  <i class="bi bi-box-arrow-up-right fs-6"></i>
-                </a>
-              </div>
-              <div class="container">
-                <p class="text-white m-0">
-                  ${highlightWordOnComment(searchWordLowerCase, textOriginal)}
-                </p> 
-                <div class="d-flex gap-2 mt-2">
-                  <img src="assets/images/heart.png" alt="like" height="25" width="25"/>
-                  <p>${comment.snippet.topLevelComment.snippet.likeCount}</p>
+            </div>
+          </div>
+        `
+      }
+
+      if (comment.replies) {
+        comment.replies.comments.forEach(rep => {
+          const replyText = rep.snippet.textOriginal
+          if (replyText.toLowerCase().includes(this.searchWord)) {
+            found++
+            showResultSection.innerHTML += `
+              <div class="container mb-4 mt-5">
+                <h5 class="text-success">Reply to ${top.authorDisplayName}:<h5/>
+                <div class="container">
+                  <div class="mb-3">
+                    <img class="img-fluid rounded-2" src="${rep.snippet.authorProfileImageUrl}">
+                  </div>
+                  <div class="mb-3">
+                    <a class="text-white fs-4" target="_blank" href="${rep.snippet.authorChannelUrl}">
+                      ${rep.snippet.authorDisplayName} <i class="bi bi-box-arrow-up-right fs-6"></i>
+                    </a>
+                  </div>
+                  <div class="container">
+                    <p class="text-white m-0">${this.highlightWord(this.searchWord, replyText)}</p>
+                    <div class="d-flex gap-2 mt-2">
+                      <img src="assets/images/heart.png" alt="like" height="25" width="25"/>
+                      <p>${rep.snippet.likeCount}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             `
-
-          if (comment.replies) {
-            const repliesComment = comment.replies
-            Object.values(repliesComment).forEach((repliedCommentList, key) => {
-              Object.values(repliedCommentList).forEach((repliedComment, key) => {
-                const textOriginal = repliedComment.snippet.textOriginal
-                if (textOriginal.toLowerCase().includes(searchWordLowerCase)) {
-                  showResultSection.innerHTML += `
-                      <div class="container mb-4 mt-5">
-                        <h5 class="text-success">Replieds to ${
-                          comment.snippet.topLevelComment.snippet.authorDisplayName
-                        }:<h5/>
-                        <div class="container">
-                          <div class="mb-3">
-                            <img class="img-fluid rounded-2" src="${repliedComment.snippet.authorProfileImageUrl}">
-                          </div>
-                          <div class="mb-3">
-                            <a class="text-white fs-4" target="_blank" href="${
-                              repliedComment.snippet.authorChannelUrl
-                            }">
-                              ${repliedComment.snippet.authorDisplayName} <i class="bi bi-box-arrow-up-right fs-6"></i>
-                            </a>
-                          </div>
-                          <div class="container">
-                            <p class="text-white m-0">${highlightWordOnComment(searchWordLowerCase, textOriginal)}</p>
-                            <div class="d-flex gap-2 mt-2">
-                              <img src="assets/images/heart.png" alt="like" height="25" width="25"/>
-                              <p>${repliedComment.snippet.likeCount}</p>
-                            </div>
-                          </div>
-                        </div>
-                      `
-                }
-              })
-            })
           }
-
-          showResultSection.innerHTML += `</div>`
-        }
-
-        result += 1
-      })
+        })
+      }
     })
 
-    if (result === 0) {
-      showResultSection.innerHTML += `
-        <h5 class="text-white text-center">Nothing found :c</h5>
-      `
+    if (found === 0) {
+      showResultSection.innerHTML = `<h5 class="text-white text-center">Nothing found :c</h5>`
     }
   }
 
-  searchComment() {
-    showResultSection.innerHTML = ''
-    ;(async () => {
-      if (this.checkLink() && this.checkWord()) {
-        let api = `https://youtube.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&maxResults=200&video_id=${this.videoID}&key=${apiToken}`
-        let data = await this.getDataFromAPI(api)
-        nextPageToken = data.nextPageToken
-        tokens[data.nextPageToken] = data
-        console.log(tokens)
-        CommentCount.textContent = parseInt(CommentCount.textContent) + data.pageInfo.totalResults
-        while (nextPageToken) {
-          let response = await fetch(
-            `https://youtube.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&maxResults=200&pageToken=${nextPageToken}&video_id=${this.videoID}&key=${apiToken}`
-          )
-          let data = await response.json()
-          nextPageToken = data.nextPageToken
-          tokens[data.nextPageToken] = data
-          CommentCount.textContent = parseInt(CommentCount.textContent) + data.pageInfo.totalResults
-          if (!nextPageToken) {
-            break
-          }
-        }
-        this.showResult()
-      }
-    })()
+  async searchComment() {
+    CommentCount.textContent = 0
+    if (this.checkLink() && this.checkWord()) {
+      const comments = await this.fetchComments(this.videoID)
+      this.showResult(comments)
+    }
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  youtubeClass = new Youtube()
-  eventListeners()
+document.addEventListener("DOMContentLoaded", () => {
+  const youtube = new Youtube()
+  searchCommentBtn.addEventListener("click", () => youtube.searchComment())
 })
-
-function eventListeners() {
-  searchCommentBtn.addEventListener('click', () => {
-    youtubeClass.searchComment()
-  })
-}
